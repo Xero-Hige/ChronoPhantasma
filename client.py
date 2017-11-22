@@ -44,7 +44,6 @@ class Client(multiprocessing.Process):
         while not self.exit.is_set():
             self.create_job()
             time.sleep(2 * random.expovariate(self.production_lambda))
-        print("Client {} allocated {}".format(self.client_number, self.get_average_time()))
         self.out_queue.put((self.client_number, self.get_average_time()))
 
     def get_average_time(self):
