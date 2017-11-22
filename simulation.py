@@ -2,8 +2,14 @@ import multiprocessing
 import random
 from time import sleep
 
+import matplotlib.pyplot as plt
+
 from client import Client
 from machine import Machine
+
+plt.rcdefaults()
+
+fig, ax = plt.subplots()
 
 clients = 20
 machines = 4
@@ -30,7 +36,8 @@ for i in range(clients):
                    client_queues[i],
                    machines_queues,
                    lambdas[i],
-                   tuple(allocations))
+                   tuple(allocations),
+                   simulation_queue)
     )
 
 machines_list = []
@@ -48,8 +55,17 @@ sleep(30)
 for client in clients_list:
     client.shutdown()
 
+results = []
 for client in clients_list:
     client.join()
+    results.append(simulation_queue.get())
 
 for machine_queue in machines_queues:
     machine_queue.put(None)
+
+results.sort(key=lambda x: x[0])
+ax.barh([x[0] for x in results], [x[1] for x in results])
+ax.set_yticks([x[0] for x in results])
+ax.set_yticklabels(["Client {:02}".format(x[0] + 1) for x in results])
+
+plt.show()
