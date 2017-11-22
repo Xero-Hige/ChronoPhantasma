@@ -4,10 +4,11 @@ import time
 
 
 class Client(multiprocessing.Process):
-    def __init__(self, client_queue, machines_queues, production_lambda, distributions):
+    def __init__(self, client_number, client_queue, machines_queues, production_lambda, distributions, out_queue):
         multiprocessing.Process.__init__(self)
         self.exit = multiprocessing.Event()
 
+        self.client_number = client_number
         self.client_queue = client_queue
         self.machines_queues = machines_queues
         self.production_lambda = production_lambda
@@ -15,9 +16,10 @@ class Client(multiprocessing.Process):
 
         self.acumulated_time = 0
         self.jobs_allocated = 0
+        self.out_queue = out_queue
 
     def create_job(self):
-        jobs = [(self.client_queue, job_size) for job_size in self.distributions]
+        jobs = [(self.client_number, job_size) for job_size in self.distributions]
 
         start_time = time.time()
         for i in range(len(jobs)):
@@ -37,11 +39,13 @@ class Client(multiprocessing.Process):
     def shutdown(self):
         self.exit.set()
 
-    def simulate_jobs(self):
+    def run(self):
         time.sleep(2 * random.expovariate(self.production_lambda))
         while not self.exit.is_set():
             self.create_job()
             time.sleep(2 * random.expovariate(self.production_lambda))
+        print("Client {} allocated {}".format(self.client_number, self.get_average_time()))
+        self.out_queue.put((self.client_number, self.get_average_time()))
 
     def get_average_time(self):
         return self.acumulated_time / self.jobs_allocated
