@@ -1,0 +1,45 @@
+{
+  "machines_times": [0.1, 0.2, 0.3, 0.5, 0.7, 1.1],
+  "clients": [
+    {
+      "lambda": 3,
+      "allocation": [0, 1, 0, 0, 0, 0]
+    }, {
+      "lambda": 3,
+      "allocation": [0, 1, 0, 0, 0, 0]
+    }, {
+      "lambda": 3,
+      "allocation": [0, 1, 0, 0, 0, 0]
+    }, {
+      "lambda": 3,
+      "allocation": [0, 0, 1, 0, 0, 0]
+    }, {
+      "lambda": 3,
+      "allocation": [0, 0, 1, 0, 0, 0]
+    }, {
+      "lambda": 3,
+      "allocation": [0, 0, 0, 1, 0, 0]
+    }, {
+      "lambda": 3,
+      "allocation": [1, 0, 0, 0, 0, 0]
+    }, {
+      "lambda": 3,
+      "allocation": [1, 0, 0, 0, 0, 0]
+    }, {
+      "lambda": 3,
+      "allocation": [1, 0, 0, 0, 0, 0]
+    }, {
+      "lambda": 3,
+      "allocation": [1, 0, 0, 0, 0, 0]
+    }, {
+      "lambda": 3,
+      "allocation": [1, 0, 0, 0, 0, 0]
+    }, {
+      "lambda": 3,
+      "allocation": [1, 0, 0, 0, 0, 0]
+    }, {
+      "lambda": 3,
+      "allocation": [1, 0, 0, 0, 0, 0]
+    }
+  ]
+}
