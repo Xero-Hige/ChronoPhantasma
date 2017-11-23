@@ -1,5 +1,6 @@
+import json
 import multiprocessing
-import random
+import sys
 from time import sleep
 
 import matplotlib.pyplot as plt
@@ -11,12 +12,14 @@ plt.rcdefaults()
 
 fig, ax = plt.subplots()
 
-clients = 20
-machines = 4
+with open(sys.argv[1]) as input_file:
+    simulation_params = json.loads(input_file.read())
 
-times = [0.1, 0.2, 0.3, 1]
-allocations = [1, 0, 0, 0]
-lambdas = [0.5] * 20
+clients = len(simulation_params["clients"])
+machines = len(simulation_params["machines_times"])
+
+machines_times = simulation_params["machines_times"]
+clients_params = simulation_params["clients"]
 
 simulation_queue = multiprocessing.Queue()
 
@@ -29,20 +32,19 @@ for _ in range(clients):
     machines_queues.append(multiprocessing.Queue())
 
 clients_list = []
-for i in range(clients):
-    random.shuffle(allocations)
+for i in range(len(clients_params)):
     clients_list.append(
             Client(i,
                    client_queues[i],
                    machines_queues,
-                   lambdas[i],
-                   tuple(allocations),
+                   clients_params[i]["lambda"],
+                   clients_params[i]["allocation"],
                    simulation_queue)
     )
 
 machines_list = []
 for i in range(machines):
-    machines_list.append(Machine(machines_queues[i], client_queues, times[i]))
+    machines_list.append(Machine(machines_queues[i], client_queues, machines_times[i]))
 
 for machine in machines_list:
     machine.start()
