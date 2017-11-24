@@ -3,7 +3,14 @@ import math
 import random
 import sys
 
-import numpy
+GA_PAYOFFS_DIFFS = 0.005
+
+RANDOM_OFFSPRING_P = 0.10
+MUTATED_OFFSPRING_P = RANDOM_OFFSPRING_P + 0.20
+
+BEST_FITS_TOURNAMENT_K = 5
+
+MAX_GA_ITERATIONS = 100
 
 POPULATION_SIZE = 1000
 
@@ -43,103 +50,122 @@ def main():
     max_payoff = sorted_payoffs[-1]
 
     global_iterations = 0
-    while (min_payoff - max_payoff) > 0.02 or max_payoff >= math.inf and global_iterations < 100:
+    while (min_payoff - max_payoff) > 0.005 or max_payoff >= math.inf and global_iterations < 100:
         print("Global iteration {}".format(global_iterations + 1))
 
+        clients_payoffs = []
         for client_j in range(len(clients_allocations)):
-
-            old_payoff = clients_payoffs[client_j]
-            population = []
-            base = clients_allocations[client_j]
-
-            population.append((old_payoff, base[:]))
-
-            while len(population) < POPULATION_SIZE:
-                new = generate_random_strategy(machines_times)
-
-                payoff = compute_payoff(client_j, clients_allocations, clients_lambdas, machines_times, new)
-                population.append((payoff, new))
-
-            random.shuffle(population)  # To mitigate effect of stable sorting
-            population.sort(key=lambda x: x[0])
-            new_payoff = population[0][0]
-            iterations = 0
-
-            while True:
-                if abs(old_payoff - new_payoff) < 0.03:
-                    print("Match Client_{} ---> {}".format(client_j, old_payoff))
-                    if old_payoff != math.inf:
-                        break
-
-                if iterations > 100:
-                    break
-
-                old_payoff = new_payoff
-
-                new_population = []
-                population_size = len(population)
-                for i in range(population_size):
-
-                    keep_prob = 1 - i / population_size
-
-                    if random.random() > keep_prob:
-                        continue
-
-                    new_population.append(population[i])
-
-                population = [p for p in new_population if sum(p[1]) == 1]
-
-                indexes = list(range(len(population)))
-                probabilities = PROBABILITIES[:len(population)]
-                regularization = sum(probabilities)
-                probabilities = [x / regularization for x in probabilities]
-
-                while len(population) < population_size:
-                    base_index = numpy.random.choice(indexes, p=probabilities)
-                    base = population[base_index][1]
-
-                    effect_random = random.random()
-
-                    if effect_random < 0.27:
-                        new = mutate(base)
-
-                    elif effect_random < 0.93 and len(population) < POPULATION_SIZE - 1:
-                        mate_index = numpy.random.choice(indexes, p=probabilities)
-                        mate = population[mate_index][1]
-
-                        new_a, new_b = crossing(base, mate)
-
-                        if sum(new_a) == 1:
-                            payoff = compute_payoff(client_j, clients_allocations, clients_lambdas, machines_times,
-                                                    new_a)
-                            population.append((payoff, new_a))
-
-                        if sum(new_b) == 1:
-                            payoff = compute_payoff(client_j, clients_allocations, clients_lambdas, machines_times,
-                                                    new_b)
-                            population.append((payoff, new_b))
-
-                        continue
-
-                    else:
-                        new = generate_random_strategy(machines_times)
-
-                    payoff = compute_payoff(client_j, clients_allocations, clients_lambdas, machines_times, new)
-                    population.append((payoff, new))
-
-                random.shuffle(population)
-                population.sort(key=lambda x: x[0])
-                new_payoff = population[0][0]
-                iterations += 1
-
-            clients_allocations[client_j] = population[0][1]
+            calculate_client_allocations(client_j, clients_allocations, clients_lambdas, clients_payoffs,
+                                         machines_times)
 
         save_state(clients_allocations, clients_lambdas, machines_times)
         global_iterations += 1
         # GA
 
 
+def calculate_client_allocations(client_j, clients_allocations, clients_lambdas, clients_payoffs, machines_times):
+    old_payoff = compute_payoff(client_j,
+                                clients_allocations,
+                                clients_lambdas,
+                                machines_times,
+                                clients_allocations[client_j])
+    population = []
+    base = clients_allocations[client_j]
+    population.append((old_payoff, base[:]))
+
+    while len(population) < POPULATION_SIZE:
+        new = generate_random_strategy(machines_times)
+        add_to_population(client_j, clients_allocations, clients_lambdas, machines_times, new, population)
+
+    random.shuffle(population)  # To mitigate effect of stable sorting
+    population.sort(key=lambda x: x[0])
+    new_payoff = population[0][0]
+    iterations = 0
+
+    while True:
+        if abs(old_payoff - new_payoff) < GA_PAYOFFS_DIFFS:
+            if old_payoff != math.inf:  # Just to prevent wrong results
+                break
+
+        if iterations > MAX_GA_ITERATIONS:
+            break
+
+        old_payoff = new_payoff
+
+        # Chooses new generation survivors based on a 1vs1 tournament selection
+        population = tournament_selection(population, 1)
+
+        regenerate_population(client_j, clients_allocations, clients_lambdas, machines_times, population)
+
+        random.shuffle(population)
+        population.sort(key=lambda x: x[0])
+        new_payoff = population[0][0]
+        iterations += 1
+
+    clients_allocations[client_j] = population[0][1]
+    clients_payoffs.append(new_payoff)
+
+
+def regenerate_population(client_j, clients_allocations, clients_lambdas, machines_times, population):
+    population_size = len(population)
+
+    best_fits = tournament_selection(population, BEST_FITS_TOURNAMENT_K)
+    while len(population) < population_size:
+        effect_random = random.random()
+
+        # Creates random offsprings
+        if effect_random <= RANDOM_OFFSPRING_P or len(population) == POPULATION_SIZE - 1:
+            new = generate_random_strategy(machines_times)
+            add_to_population(client_j, clients_allocations, clients_lambdas, machines_times, new, population)
+            continue
+
+        base_individual = random.choice(best_fits)
+
+        # Creates mutated offsprings
+        if effect_random < MUTATED_OFFSPRING_P:
+            new = mutate(base_individual)
+            add_to_population(client_j, clients_allocations, clients_lambdas, machines_times, new, population)
+            continue
+
+        # Creates crossed offsprings
+        mate = random.choice(best_fits)
+
+        offspring_a, offspring_b = crossing(base_individual, mate)
+        add_to_population(client_j, clients_allocations, clients_lambdas, machines_times, offspring_a, population)
+        add_to_population(client_j, clients_allocations, clients_lambdas, machines_times, offspring_b, population)
+
+
+def tournament_selection(population, k):
+    """Selects a subset of the population based on a k-tournament selection"""
+    winners = []
+
+    population = population[:]
+    random.shuffle(population)
+
+    while len(population) > k:
+        individual_a = population.pop()
+        individual_b = population.pop()
+
+        survivor = individual_a if individual_a[0] < individual_b[0] else individual_b
+
+        winners.append(survivor)
+
+    for individual in population:
+        winners.append(individual)
+
+    return winners
+
+
+def add_to_population(client_j, clients_allocations, clients_lambdas, machines_times, new_strategy, population):
+    """Adds a new allocation strategy to the population list"""
+    if sum(new_strategy) != 1:
+        return
+    payoff = compute_payoff(client_j, clients_allocations, clients_lambdas, machines_times, new_strategy)
+    population.append((payoff, new_strategy))
+
+
 def save_state(clients_allocations, clients_lambdas, machines_times):
+    """Stores the actual state of the algorithm in a way that can be used by the simulator"""
     clients = []
     for i in range(len(clients_lambdas)):
         clients.append({"lambda": clients_lambdas[i], "allocation": clients_allocations[i]})
@@ -149,6 +175,7 @@ def save_state(clients_allocations, clients_lambdas, machines_times):
 
 
 def crossing(base, mate):
+    """Generates 2 offsprings swapping chromosomes"""
     pivot = random.randrange(0, len(base))
     chromosome_a_1, chromosome_a_2 = base[:pivot], base[pivot:]
     chromosome_b_1, chromosome_b_2 = mate[:pivot], mate[pivot:]
@@ -169,8 +196,10 @@ def crossing(base, mate):
         chromosome_a_2[i] *= x_1
     for i in range(len(chromosome_b_2)):
         chromosome_b_2[i] *= x_2
+
     new_a = chromosome_a_1 + chromosome_b_2
     new_b = chromosome_b_1 + chromosome_a_2
+
     return new_a, new_b
 
 
@@ -182,27 +211,31 @@ def generate_random_strategy(machines_times):
     return new
 
 
-def mutate(base):
-    new = base[:]
+def mutate(base_strategy):
+    """Mutates an individual reallocating chromosomes"""
+    new_strategy = base_strategy[:]
     r_number = random.random()
+
+    # Random full permutations
     if r_number < 0.1:
-        random.shuffle(new)
+        random.shuffle(new_strategy)
+        return new_strategy
 
-    elif r_number < 0.5:
-        i = random.randrange(0, len(base))
-        j = random.randrange(0, len(base))
+    i = random.randrange(0, len(base_strategy))
+    j = random.randrange(0, len(base_strategy))
 
-        new[i], new[j] = new[j], new[i]
+    # Random single swap
+    if r_number < 0.7:
+        new_strategy[i], new_strategy[j] = new_strategy[j], new_strategy[i]
 
+    # Random reallocation
     else:
-        i = random.randrange(0, len(base))
-        j = random.randrange(0, len(base))
-
         gamma = random.random()
-        mod = new[i] * gamma
-        new[i] -= mod
-        new[j] += mod
-    return new
+        mod = new_strategy[i] * gamma
+        new_strategy[i] -= mod
+        new_strategy[j] += mod
+
+    return new_strategy
 
 
 def compute_payoff(client_j, clients_allocations, clients_lambdas, machines_times, client_allocations):
