@@ -52,7 +52,7 @@ for machine in machines_list:
 for client in clients_list:
     client.start()
 
-sleep(20)
+sleep(120)
 
 for client in clients_list:
     client.shutdown()
