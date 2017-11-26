@@ -4,7 +4,6 @@ import sys
 from time import sleep
 
 import matplotlib.pyplot as plt
-
 from client import Client
 from machine import Machine
 from result_totalizer import Totalizer
@@ -15,6 +14,14 @@ fig, ax = plt.subplots()
 
 with open(sys.argv[1]) as input_file:
     simulation_params = json.loads(input_file.read())
+
+simulation_time = 120
+if len(sys.argv) > 2:
+    simulation_time = int(sys.argv[2])
+
+figure_file = ""
+if len(sys.argv) > 3:
+    figure_file = sys.argv[3]
 
 clients = len(simulation_params["clients"])
 machines = len(simulation_params["machines_times"])
@@ -52,7 +59,7 @@ for machine in machines_list:
 for client in clients_list:
     client.start()
 
-sleep(120)
+sleep(simulation_time)
 
 for client in clients_list:
     client.shutdown()
@@ -76,4 +83,7 @@ ax.barh([x[0] for x in results], [x[1] for x in results])
 ax.set_yticks([x[0] for x in results])
 ax.set_yticklabels(["Client {:02}".format(x[0] + 1) for x in results])
 
-plt.show()
+if figure_file:
+    fig.savefig(figure_file)
+else:
+    plt.show()
