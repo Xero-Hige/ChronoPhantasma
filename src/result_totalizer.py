@@ -26,9 +26,8 @@ class Totalizer(multiprocessing.Process):
 
             job = self.in_queue.get()
 
-        print("No more jobs")
+        print("- No more jobs pending -")
         for client_number in self.jobs:
-            print(client_number)
             accumulated = 0
             total_jobs = 0
             for job, job_time in self.jobs[client_number].items():

@@ -3,6 +3,8 @@ import math
 import random
 import sys
 
+MAX_GLOBAL_ITERATIONS = 100
+
 GA_PAYOFFS_DIFFS = 0.005
 
 RANDOM_OFFSPRING_P = 0.10
@@ -50,8 +52,9 @@ def main():
     max_payoff = sorted_payoffs[-1]
 
     global_iterations = 0
-    while (min_payoff - max_payoff) > 0.005 or max_payoff >= math.inf and global_iterations < 100:
-        print("Global iteration {}".format(global_iterations + 1))
+    while (min_payoff - max_payoff) > 0.005 or max_payoff >= math.inf and global_iterations < MAX_GLOBAL_ITERATIONS:
+        if global_iterations + 1 == MAX_GLOBAL_ITERATIONS:
+            print("Last iteration {}".format(global_iterations + 1))
 
         clients_payoffs = []
         for client_j in range(len(clients_allocations)):

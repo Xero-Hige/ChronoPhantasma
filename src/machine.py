@@ -22,7 +22,7 @@ class Machine(multiprocessing.Process):
             end_time = time()
             self.totalizer_queue.put((client_number, job_numb, end_time - start_time))
             job = self.machine_queue.get()
-        print("Machine ended")
+        print(">>Machine ended<<")
 
     def shutdown(self):
         self.exit.set()

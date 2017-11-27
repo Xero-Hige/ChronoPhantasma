@@ -13,7 +13,7 @@ class Client(multiprocessing.Process):
         self.production_lambda = production_lambda
         self.distributions = distributions
 
-        self.acumulated_time = 0
+        self.accumulated_time = 0
         self.jobs_allocated = 0
 
     def create_job(self, job_number):
@@ -34,3 +34,4 @@ class Client(multiprocessing.Process):
             self.create_job(i)
             time.sleep(random.expovariate(self.production_lambda))
             i += 1
+        print(">>Client {} ended<<".format(self.client_number))
